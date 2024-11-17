@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Control</title>
+    <style>
+        body {
+            background-color: #2ecc71;
+            font-family: Arial, sans-serif;
+        }
+
+        .button-container {
+            display: grid;
+            grid-template-rows: auto auto auto;
+            grid-template-columns: auto auto auto;
+            gap: 20px;
+            justify-items: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .button-container div {
+            margin-top: 60px;
+            grid-column: span 3;
+        }
+
+        .middle-buttons {
+            grid-column: 1 / 4;
+            display: flex;
+            justify-content: space-between;
+            width: 40%;
+        }
+
+        button {
+            padding: 10px 40px;
+            font-size: 54px;
+            font-weight: bold;
+            color: white;
+            background-color: #0984e3;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="button"]:hover {
+            background-color: #74b9ff;
+        }
+    </style>
+    <script>
+        // Firebase configuration
+        const DATABASE_URL = "https://botcontrolling-default-rtdb.asia-southeast1.firebasedatabase.app/"; // Replace with your Firebase Realtime Database URL
+        const FIREBASE_AUTH = "5lsGlHTkKufVqSp9xHGbEhZAzQokPLeiCfHvbMSv"; // Optional for basic security
+
+        let activeInterval = null; // Timer for sending data
+        let pressedButtons = {}; // Track pressed buttons
+
+        // Function to send data to Firebase
+        async function sendData(value) {
+            const path = "Movement"; // Firebase database path
+            const url = `${DATABASE_URL}/${path}.json${FIREBASE_AUTH ? `?auth=${FIREBASE_AUTH}` : ''}`;
+            const data = { value }; // Data to send
+
+            try {
+                const response = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+
+                if (response.ok) {
+                    console.log("Data sent to Firebase:", value);
+                } else {
+                    console.error("Failed to send data:", response.status, response.statusText);
+                }
+            } catch (error) {
+                console.error("Error sending data:", error);
+            }
+        }
+
+        // Start sending data continuously for a value
+        function startSending(value) {
+            // Stop any previous interval
+            if (activeInterval) {
+                clearInterval(activeInterval);
+            }
+
+            // Start a new interval to send data continuously
+            activeInterval = setInterval(() => sendData(value), 400); // Adjust interval time as needed
+        }
+
+        // Stop sending data and check if all buttons are released
+        function stopSending(buttonId) {
+            pressedButtons[buttonId] = false;
+
+            // If no buttons are pressed, send 0
+            if (!Object.values(pressedButtons).includes(true)) {
+                clearInterval(activeInterval);
+                sendData(0);
+            }
+        }
+
+        // Initialize button behavior
+        function initButton(buttonId, value) {
+            const button = document.getElementById(buttonId);
+
+            pressedButtons[buttonId] = false; // Initially not pressed
+
+            // Handle button press
+            button.addEventListener("mousedown", () => {
+                pressedButtons[buttonId] = true;
+                startSending(value);
+            });
+
+            // Handle button release
+            button.addEventListener("mouseup", () => stopSending(buttonId));
+
+            // Handle touch events for mobile compatibility
+            button.addEventListener("touchstart", (e) => {
+                e.preventDefault(); // Prevent duplicate mousedown event
+                pressedButtons[buttonId] = true;
+                startSending(value);
+            });
+
+            button.addEventListener("touchend", () => stopSending(buttonId));
+        }
+
+        // Initialize all buttons on page load
+        window.onload = () => {
+            initButton("button1", 1);
+            initButton("button2", 2);
+            initButton("button3", 3);
+            initButton("button4", 4);
+        };
+    </script>
+</head>
+
+<body>
+    <center>
+        <h1>Bot Control</h1>
+        <h2>Control The Bot From Anywhere</h2>
+        <hr color="#d63031" width="50%">
+    </center>
+    <div class="button-container">
+        <div>
+            <button id="button1">Forward</button>
+        </div>
+        <div class="middle-buttons">
+                <button id="button2">Left</button>
+                <button id="button3">Right</button>
+        </div>
+        <div>
+            <button id="button4">Backward</button>
+        </div>
+    </div>
+</body>
+
+</html>
